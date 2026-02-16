@@ -3,12 +3,11 @@ from sys import prefix
 import yaml
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import Command, FindExecutable, LaunchConfiguration
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
 from ament_index_python.packages import get_package_share_directory
-
 
 def load_file(package_name, file_path):
     package_path = get_package_share_directory(package_name)
@@ -43,18 +42,33 @@ def generate_launch_description():
         "panda_moveit_config", "config/kinematics.yaml"
     )
 
+    # Load Robot Description
+    robot_description_config = Command(
+        [FindExecutable(name="xacro"), " ", os.path.join(get_package_share_directory("panda_moveit_config"), "config", "panda.urdf.xacro")]
+    )
+    robot_description = {"robot_description": robot_description_config}
+
+    # Load Robot Description Semantic
+    with open(os.path.join(get_package_share_directory("panda_moveit_config"), "config", "panda.srdf"), "r") as file:
+        robot_description_semantic_config = file.read()
+    robot_description_semantic = {"robot_description_semantic": robot_description_semantic_config}
+
     # RViz
     tutorial_mode = LaunchConfiguration("rviz_tutorial")
-    rviz_base = os.path.join(get_package_share_directory("moveit2_tutorials"), "launch")
-    rviz_full_config = os.path.join(rviz_base, "panda_moveit_config_demo.rviz")
-    rviz_empty_config = os.path.join(rviz_base, "panda_moveit_config_demo_empty.rviz")
+    rviz_base = os.path.join(get_package_share_directory("panda_moveit_config"), "launch")
+    rviz_full_config = os.path.join(rviz_base, "moveit.rviz")
+    rviz_empty_config = os.path.join(rviz_base, "moveit_empty.rviz")
     rviz_node_tutorial = Node(
         package="rviz2",
         executable="rviz2",
         name="rviz2",
         output="log",
         arguments=["-d", rviz_empty_config],
-        parameters=[kinematics_yaml],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            kinematics_yaml,
+        ],
         condition=IfCondition(tutorial_mode),
     )
     rviz_node = Node(
@@ -63,7 +77,11 @@ def generate_launch_description():
         name="rviz2",
         output="log",
         arguments=["-d", rviz_full_config],
-        parameters=[kinematics_yaml],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            kinematics_yaml,
+        ],
         condition=UnlessCondition(tutorial_mode),
     )
 

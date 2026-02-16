@@ -85,6 +85,15 @@ def generate_launch_description():
     #.joint_limits(file_path="config/joint_limits.yaml")
     #.robot_description_kinematics(file_path="config/kinematics.yaml")
 
+    run_move_group_node = Node(
+        package="moveit_ros_move_group",
+        executable="move_group",
+        output="screen",
+        parameters=[moveit_config.to_dict(), 
+                    {"use_sim_time": True},
+                    {"publish_robot_description_semantic": True}],
+    )
+
     moveit_py_node = Node(
         name="moveit_py",
         package="panda_moveit_config",
@@ -166,6 +175,7 @@ def generate_launch_description():
             arguments,
             gazebo,
             gz_spawn_entity,
+            run_move_group_node,
             moveit_py_node,
             robot_state_publisher,
             bridge,
